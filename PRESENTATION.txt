@@ -1,0 +1,300 @@
+PRESENTATION CONTENT (COPY THANG VAO PPT)
+==================================================
+
+Huong dan su dung file nay:
+1) Moi slide duoi day co 2 phan:
+   - NOI DUNG DAT LEN SLIDE: copy nguyen van.
+   - CODE DAT LEN SLIDE: copy doan code vao box code trong PPT.
+2) Phan [ANH] la cho ban tu chen screenshot.
+
+==================================================
+SLIDE 1 - TIEU DE
+==================================================
+[NOI DUNG DAT LEN SLIDE]
+AGV & AOI Monitoring Dashboard
+
+Theo doi van hanh AGV + chat luong AOI theo thoi gian thuc
+
+Nguoi thuc hien: [Ten ban]
+Ngay demo: [Ngay]
+
+[ANH]
+- 1 anh tong quan dashboard (full UI)
+
+==================================================
+SLIDE 2 - BAI TOAN NGHIEP VU
+==================================================
+[NOI DUNG DAT LEN SLIDE]
+Muc tieu he thong:
+- Phat hien nhanh AGV rot mang va loi API.
+- Danh gia chat luong AOI qua PASS/FAIL.
+- Hien thi KPI "biet noi" de quan ly ra quyet dinh nhanh.
+- Ho tro chon NHIEU file log va NHIEU file anh trong 1 lan.
+
+Gia tri mang lai:
+- Nhin nhanh "dang on hay dang co van de".
+- Xac dinh diem nong theo gio/ngay.
+- Xac dinh AGV/API dang gay anh huong lon nhat.
+
+==================================================
+SLIDE 3 - KIEN TRUC FILE
+==================================================
+[NOI DUNG DAT LEN SLIDE]
+Kien truc 3 file:
+- main.py: giao dien, KPI, ve bieu do, hover tooltip.
+- agv.py: parser log AGV, tong hop offline/API/coverage.
+- aoi.py: parser anh AOI, tong hop PASS/FAIL theo ngay.
+
+Ly do tach module:
+- De bao tri
+- De mo rong
+- De test tung phan doc lap
+
+[CODE DAT LEN SLIDE]
+main.py  -> UI + Charts + KPI + Hover
+agv.py   -> Parse logs -> df_offline, df_api, coverage
+aoi.py   -> Parse images -> df_aoi (Date, PASS, FAIL)
+
+==================================================
+SLIDE 4 - LUONG DU LIEU
+==================================================
+[NOI DUNG DAT LEN SLIDE]
+Data flow:
+1) User chon file log AGV (multi-select).
+2) User chon file anh AOI (multi-select).
+3) Parser AGV/AOI xu ly du lieu.
+4) main.py cap nhat KPI + Grid bieu do + Hover.
+5) Dashboard hien thi trang thai tong quan + xu huong.
+
+[CODE DAT LEN SLIDE]
+# main.py
+def load_agv_logs(self):
+    file_paths = filedialog.askopenfilenames(...)
+    df_offline, df_api, system_events, coverage = agv.parse_agv_logs(file_paths)
+    self.df_offline = df_offline
+    self.df_api = df_api
+    self.coverage = coverage
+    self.draw_agv_chart(self.df_offline)
+    self.draw_api_chart(self.df_api)
+    self.draw_offline_trend(self.df_offline)
+    self.update_kpi()
+
+def load_aoi_images(self):
+    file_paths = filedialog.askopenfilenames(...)
+    self.df_aoi = aoi.parse_aoi_images(file_paths)
+    self.draw_aoi_chart(self.df_aoi)
+    self.draw_aoi_rate_chart(self.df_aoi)
+    self.update_kpi()
+
+==================================================
+SLIDE 5 - AGV PARSER (FUNCTION + GIAI THICH)
+==================================================
+[NOI DUNG DAT LEN SLIDE]
+agv.py gom 2 function chinh:
+1) _normalize_log_inputs(...)
+- Chuan hoa input (1 file / nhieu file / folder) -> list file .txt hop le.
+
+2) parse_agv_logs(...)
+- Doc tung dong log.
+- Bat timestamp.
+- Trich xuat:
+  + AGV offline
+  + API error
+  + Event he thong lien quan
+- Tong hop:
+  + df_offline (Hour, AGV, Count)
+  + df_api (Hour, API, Count)
+  + coverage (ts_min, ts_max, files)
+
+[CODE DAT LEN SLIDE]
+# agv.py (rut gon)
+def parse_agv_logs(paths_or_folder):
+    time_pattern = r'(\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2})(?:\\.\\d+)?'
+    ...
+    if offline_match:
+        offline_events.append({'TS': timestamp, 'Hour': ..., 'AGV': ...})
+    if "无法连接到远程服务器" in line or "Unable to connect to the remote server" in line:
+        api_errors.append({'TS': timestamp, 'Hour': ..., 'API': ...})
+    ...
+    coverage = {"ts_min": ts_min_all, "ts_max": ts_max_all, "files": len(file_paths)}
+    return df_offline, df_api, system_events, coverage
+
+==================================================
+SLIDE 6 - AOI PARSER (FUNCTION + GIAI THICH)
+==================================================
+[NOI DUNG DAT LEN SLIDE]
+aoi.py gom 2 function chinh:
+1) _normalize_image_inputs(...)
+- Chuan hoa input anh (.png/.jpg/.jpeg/.bmp).
+
+2) parse_aoi_images(...)
+- Doc ten file anh.
+- Rule:
+  + Co "ALL PASS" -> PASS
+  + Co "FAIL" -> FAIL
+- Trich date tu ten file.
+- Tong hop thanh bang PASS/FAIL theo ngay.
+
+[CODE DAT LEN SLIDE]
+# aoi.py (rut gon)
+def parse_aoi_images(paths_or_folder):
+    for file_path in file_paths:
+        filename = os.path.basename(file_path)
+        status = 'PASS' if 'ALL PASS' in filename.upper() else 'FAIL' if 'FAIL' in filename.upper() else 'UNKNOWN'
+        date_match = re.search(r'\\d{8}', filename)
+        ...
+    summary = df.groupby(['Date', 'Status']).size().unstack(fill_value=0).reset_index()
+    return summary
+
+==================================================
+SLIDE 7 - GRID LAYOUT DANG BIEN DIEN GI
+==================================================
+[NOI DUNG DAT LEN SLIDE]
+Grid dashboard:
+
+Row 0 (full width):
+- Tong quan nhanh (KPI cards)
+
+Row 1:
+- Trai (rong 2 cot): Xu huong AGV rot mang (Trend + Heatmap)
+- Phai (1 cot): Xu huong loi API (Trend + Heatmap)
+
+Row 2:
+- Top AGV rot mang
+- AOI PASS/FAIL theo ngay
+- AOI Pass rate (%) theo ngay
+
+Y nghia:
+- Trend: thay tang/ giam theo thoi gian
+- Heatmap: thay "gio nong"
+- Top AGV: tim doi tuong gay anh huong lon
+- AOI chart: thay can bang PASS/FAIL va chat luong tong the
+
+[ANH]
+- 1 anh dashboard da danh dau Row 0 / Row 1 / Row 2
+
+==================================================
+SLIDE 8 - KPI "BIET NOI"
+==================================================
+[NOI DUNG DAT LEN SLIDE]
+4 KPI card:
+
+1) AGV Offline
+- Tong so offline
+- So AGV bi anh huong
+- Peak hour
+- AGV nang nhat
+- Gio gan nhat vs gio truoc
+
+2) API Errors
+- Tong loi API
+- API endpoint loi nhieu nhat
+- Gio gan nhat vs gio truoc
+
+3) AOI Yield
+- Pass rate hien tai
+- Tong PASS/FAIL
+- Ngay fail cao nhat
+- Bien dong so voi ngay truoc
+
+4) Coverage
+- Tu timestamp nao -> den timestamp nao
+- So file log duoc phan tich
+
+[CODE DAT LEN SLIDE]
+# main.py (rut gon)
+def update_kpi(self):
+    offline_total = int(self.df_offline['Count'].sum()) if ... else 0
+    api_total = int(self.df_api['Count'].sum()) if ... else 0
+    aoi_pass = int(self.df_aoi['PASS'].sum()) if ... else 0
+    aoi_fail = int(self.df_aoi['FAIL'].sum()) if ... else 0
+    ...
+    self._kpi_set("agv", ...)
+    self._kpi_set("api", ...)
+    self._kpi_set("aoi", ...)
+    self._kpi_set("cover", ...)
+
+==================================================
+SLIDE 9 - HOVER TOOLTIP (CHI TIET)
+==================================================
+[NOI DUNG DAT LEN SLIDE]
+Hover duoc trien khai cho:
+- Bar chart (Top AGV, AOI PASS/FAIL)
+- Line chart (trend, pass rate)
+- Heatmap (offline/API)
+
+Thong tin hien thi khi hover:
+- Day la gi (ten chart + y nghia)
+- Gia tri tai diem dang tro
+- Ngu canh thoi gian (ngay/gio)
+
+Loi ich:
+- Nguoi xem khong can "doan" bieu do
+- Demo truc quan, giai thich nhanh
+
+[CODE DAT LEN SLIDE]
+# main.py (rut gon)
+annot = ax.annotate(..., annotation_clip=False)
+def on_move(event):
+    ...
+    annot.set_text(
+        "Heatmap loi API\\n"
+        "Y nghia: tong so loi API trong 1 gio.\\n\\n"
+        f"Ngay: {day}\\nGio: {hour}:00\\nAPI errors: {value}"
+    )
+    annot.set_visible(True)
+
+==================================================
+SLIDE 10 - CASE DEMO THUC TE
+==================================================
+[NOI DUNG DAT LEN SLIDE]
+Kich ban demo:
+1) Chon 2 file log AGV (vd: Log2026031700 + Log2026031707).
+2) Chon nhieu anh AOI.
+3) Kiem tra:
+   - KPI cap nhat
+   - Top AGV cap nhat
+   - Heatmap chi ra gio nong
+   - AOI yield cap nhat
+4) Hover vao:
+   - 1 cot Top AGV
+   - 1 o Heatmap
+   - 1 diem AOI pass rate
+
+Thong diep chot:
+"He thong cho biet nhanh: loi gi, o dau, luc nao, muc do nao."
+
+==================================================
+SLIDE 11 - CODE GRID UI (DE CHUNG MINH)
+==================================================
+[NOI DUNG DAT LEN SLIDE]
+Grid duoc thiet ke de:
+- KPI nỏi bat o tren cung
+- Trend + Heatmap nam giua de theo doi theo thoi gian
+- Chart tong hop nam duoi de chot ket luan
+
+[CODE DAT LEN SLIDE]
+# main.py (rut gon)
+self.frame_kpi = self.create_chart_frame(0, 0, "Tong quan nhanh", colspan=3)
+self.frame_offline_trend = self.create_chart_frame(1, 0, "Xu huong AGV ...", colspan=2)
+self.frame_api_trend = self.create_chart_frame(1, 2, "Xu huong loi API ...")
+self.frame_agv = self.create_chart_frame(2, 0, "Top AGV rot mang")
+self.frame_aoi = self.create_chart_frame(2, 1, "AOI Pass/Fail theo ngay")
+self.frame_aoi_rate = self.create_chart_frame(2, 2, "AOI Pass rate (%) theo ngay")
+
+==================================================
+SLIDE 12 - KET LUAN & ROADMAP
+==================================================
+[NOI DUNG DAT LEN SLIDE]
+Ket qua hien tai:
+- Dashboard da su dung duoc de demo va theo doi van hanh.
+- KPI va hover da giup "doc hieu nhanh".
+- Ho tro multi-file cho ca AGV log va AOI image.
+
+Huong mo rong:
+- Cai dat nguong canh bao (WARN/ALERT) tu UI
+- Export bao cao nhanh (PNG/PDF)
+- Luu lich su KPI theo ngay/ca
+- Noi du lieu realtime
+
+END.
